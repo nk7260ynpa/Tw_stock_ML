@@ -12,6 +12,9 @@ Tw_stock_ML/
 │   └── docker-compose.yaml # Docker Compose 設定
 ├── src/                    # 主程式碼
 │   ├── main.py             # 主程式進入點
+│   ├── metrics/            # 模型評估指標
+│   │   ├── price_metrics.py      # 價格距離指標（MAE、RMSE、MAPE）
+│   │   └── direction_metrics.py  # 方向正確率指標
 │   └── utils/              # 工具模組
 │       └── logger.py       # 日誌工具
 ├── tests/                  # 單元測試
