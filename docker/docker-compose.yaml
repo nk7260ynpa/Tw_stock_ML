@@ -1,0 +1,15 @@
+services:
+  tw-stock-ml:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: tw-stock-ml
+    volumes:
+      - ../logs:/app/logs
+      - ../src:/app/src
+      - ../tests:/app/tests
+      - ../data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    command: python src/main.py
