@@ -168,3 +168,92 @@ def save_model(
     model.save_model(str(path))
     logger.info("模型已儲存至 %s", path)
     return path
+
+
+def get_small_data_params(device: str) -> dict:
+    """取得小資料量專用 XGBoost 參數。
+
+    針對樣本數少（< 200 筆）的情境，使用較保守的超參數，
+    搭配 L1/L2 正則化與 subsample 降低過擬合風險。
+
+    Args:
+        device: 裝置字串，"cuda" 或 "cpu"。
+
+    Returns:
+        XGBoost 參數字典。
+    """
+    return {
+        "n_estimators": 300,
+        "max_depth": 3,
+        "learning_rate": 0.01,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.1,
+        "reg_lambda": 1.0,
+        "min_child_weight": 3,
+        "early_stopping_rounds": 30,
+        "device": device,
+    }
+
+
+def evaluate_return_model(
+    model: xgb.XGBRegressor,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    base_prices: np.ndarray,
+) -> dict:
+    """評估報酬率模型，同時計算報酬率指標與價格指標。
+
+    預測報酬率後逆推絕對價格：predicted_price = base_price * (1 + predicted_return)。
+
+    Args:
+        model: 訓練完成的 XGBRegressor 模型。
+        X_test: 測試特徵陣列。
+        y_test: 測試目標陣列（報酬率）。
+        base_prices: 基準價格陣列，長度與 y_test 相同。
+
+    Returns:
+        包含報酬率指標與價格指標的字典：
+        - return_MAE: 報酬率 MAE。
+        - return_RMSE: 報酬率 RMSE。
+        - price_MAE: 逆推價格 MAE。
+        - price_RMSE: 逆推價格 RMSE。
+        - price_MAPE: 逆推價格 MAPE (%)。
+        - directional_accuracy: 方向正確率。
+    """
+    y_pred_return = predict(model, X_test)
+
+    # 報酬率指標
+    return_mae_val = mae(y_test, y_pred_return)
+    return_rmse_val = rmse(y_test, y_pred_return)
+
+    # 逆推絕對價格
+    actual_prices = base_prices * (1 + y_test)
+    predicted_prices = base_prices * (1 + y_pred_return)
+
+    # 價格指標
+    price_mae_val = mae(actual_prices, predicted_prices)
+    price_rmse_val = rmse(actual_prices, predicted_prices)
+    price_mape_val = mape(actual_prices, predicted_prices)
+
+    # 方向正確率（用逆推價格計算）
+    da = directional_accuracy(actual_prices, predicted_prices)
+
+    results = {
+        "return_MAE": return_mae_val,
+        "return_RMSE": return_rmse_val,
+        "price_MAE": price_mae_val,
+        "price_RMSE": price_rmse_val,
+        "price_MAPE": price_mape_val,
+        "directional_accuracy": da,
+    }
+
+    logger.info(
+        "報酬率模型評估完成 — 報酬率 MAE: %.6f, 價格 MAE: %.2f, "
+        "價格 MAPE: %.2f%%, 方向正確率: %.2f%%",
+        results["return_MAE"],
+        results["price_MAE"],
+        results["price_MAPE"],
+        results["directional_accuracy"] * 100,
+    )
+    return results

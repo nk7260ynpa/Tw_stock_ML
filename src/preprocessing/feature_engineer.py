@@ -6,6 +6,7 @@
 import numpy as np
 import pandas as pd
 
+from src.preprocessing.technical_indicators import compute_all_indicators
 from src.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -164,3 +165,99 @@ def create_sliding_windows(
         window_size * n_features,
     )
     return X_windows, y_windows, window_dates
+
+
+# --- 以下為技術指標管線專用函式 ---
+
+_EXCLUDE_COLUMNS = {"Date", "SecurityCode"}
+
+
+def create_target_return(
+    df: pd.DataFrame,
+    target_column: str = "ClosingPrice",
+) -> pd.Series:
+    """建構隔天報酬率作為預測目標。
+
+    報酬率 = (Close_{t+1} - Close_t) / Close_t。
+
+    Args:
+        df: 包含價格欄位的 DataFrame。
+        target_column: 目標欄位名稱，預設為 ClosingPrice。
+
+    Returns:
+        隔天報酬率 Series，最後一列為 NaN。
+
+    Raises:
+        KeyError: 當 DataFrame 缺少目標欄位時。
+    """
+    if target_column not in df.columns:
+        raise KeyError(f"DataFrame 缺少目標欄位：{target_column}")
+    close = df[target_column]
+    return (close.shift(-1) - close) / close
+
+
+def build_feature_target_with_indicators(
+    df: pd.DataFrame,
+    feature_columns: list[str] | None = None,
+    target_type: str = "return",
+    target_column: str = "ClosingPrice",
+    date_column: str = "Date",
+) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+    """以技術指標為特徵，建構特徵與目標。
+
+    流程：compute_all_indicators → 選取特徵 → 建構目標。
+
+    Args:
+        df: 每日行情 DataFrame。
+        feature_columns: 特徵欄位名稱清單，None 時自動使用所有技術指標欄位
+            （排除 Date、SecurityCode 等非數值欄位）。
+        target_type: 目標類型，"return" 為報酬率，"price" 為絕對價格。
+        target_column: 目標欄位名稱，預設為 ClosingPrice。
+        date_column: 日期欄位名稱，預設為 Date。
+
+    Returns:
+        (features, target, dates) 三元組：
+        - features: 技術指標特徵 DataFrame（已移除最後一列）。
+        - target: 目標 Series（已移除最後一列 NaN）。
+        - dates: 日期 Series（已移除最後一列）。
+
+    Raises:
+        KeyError: 當 DataFrame 缺少必要欄位時。
+        ValueError: 當 target_type 不是 "return" 或 "price" 時。
+    """
+    if target_type not in ("return", "price"):
+        raise ValueError(f"target_type 必須為 'return' 或 'price'，收到 '{target_type}'")
+
+    # 計算技術指標（移除暖身期 NaN）
+    df_ind = compute_all_indicators(df, drop_warmup_rows=True)
+
+    # 建構目標
+    if target_type == "return":
+        target = create_target_return(df_ind, target_column)
+    else:
+        target = create_target(df_ind, target_column)
+
+    # 選取特徵欄位
+    if feature_columns is None:
+        feature_columns = [
+            c for c in df_ind.columns if c not in _EXCLUDE_COLUMNS
+        ]
+    features = df_ind[feature_columns].copy()
+
+    # 移除最後一列（target 為 NaN）
+    valid_mask = target.notna()
+    features = features.loc[valid_mask].reset_index(drop=True)
+    target = target.loc[valid_mask].reset_index(drop=True)
+
+    if date_column in df_ind.columns:
+        dates = df_ind.loc[valid_mask, date_column].reset_index(drop=True)
+    else:
+        dates = pd.Series(range(valid_mask.sum()), name="index")
+
+    logger.info(
+        "技術指標特徵工程完成：%d 筆資料，%d 個特徵，目標類型=%s",
+        len(features),
+        len(features.columns),
+        target_type,
+    )
+    return features, target, dates

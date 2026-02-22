@@ -21,6 +21,7 @@ Tw_stock_ML/
 │   ├── model/              # 模型訓練模組
 │   │   └── xgboost_model.py      # XGBoost 訓練/預測/評估/儲存/GPU 偵測
 │   ├── preprocessing/      # 資料前處理模組
+│   │   ├── technical_indicators.py # 技術指標計算（SMA、EMA、RSI、MACD、布林帶、ATR）
 │   │   ├── feature_engineer.py   # 特徵選取與目標建構
 │   │   ├── split.py              # 時間序列切分
 │   │   ├── scaler.py             # StandardScaler 標準化

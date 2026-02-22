@@ -6,7 +6,9 @@
 from src.model.xgboost_model import (
     detect_device,
     evaluate_model,
+    evaluate_return_model,
     get_default_params,
+    get_small_data_params,
     predict,
     save_model,
     train_xgboost,
@@ -15,8 +17,10 @@ from src.model.xgboost_model import (
 __all__ = [
     "detect_device",
     "get_default_params",
+    "get_small_data_params",
     "train_xgboost",
     "predict",
     "evaluate_model",
+    "evaluate_return_model",
     "save_model",
 ]
