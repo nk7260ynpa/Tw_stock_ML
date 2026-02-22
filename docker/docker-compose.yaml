@@ -9,6 +9,7 @@ services:
       - ../src:/app/src
       - ../tests:/app/tests
       - ../data:/app/data
+      - ../model:/app/model
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app

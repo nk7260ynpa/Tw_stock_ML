@@ -19,7 +19,7 @@ Tw_stock_ML/
 │   │   ├── price_metrics.py      # 價格距離指標（MAE、RMSE、MAPE）
 │   │   └── direction_metrics.py  # 方向正確率指標
 │   ├── model/              # 模型訓練模組
-│   │   └── xgboost_model.py      # XGBoost 訓練/預測/評估/GPU 偵測
+│   │   └── xgboost_model.py      # XGBoost 訓練/預測/評估/儲存/GPU 偵測
 │   ├── preprocessing/      # 資料前處理模組
 │   │   ├── feature_engineer.py   # 特徵選取與目標建構
 │   │   ├── split.py              # 時間序列切分
@@ -28,7 +28,8 @@ Tw_stock_ML/
 │   └── utils/              # 工具模組
 │       └── logger.py       # 日誌工具
 ├── tests/                  # 單元測試
-├── data/                   # 資料存放
+├── model/                  # 訓練完成的模型存放
+├── data/                   # 訓練資料存放
 ├── logs/                   # 日誌存放
 ├── requirements.txt        # Python 依賴
 ├── run.sh                  # 主程式啟動腳本
@@ -55,7 +56,7 @@ bash docker/build.sh
 bash run.sh
 ```
 
-此腳本會自動建立 Docker image、建立 `db_network` 網路、啟動 container，並掛載 `logs/` 資料夾。
+此腳本會自動建立 Docker image、建立 `db_network` 網路、啟動 container，並掛載 `logs/`、`data/`、`model/` 資料夾。
 
 ### 執行測試
 

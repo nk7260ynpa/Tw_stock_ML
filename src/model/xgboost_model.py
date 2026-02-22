@@ -1,7 +1,9 @@
 """XGBoost 模型訓練模組。
 
-提供 XGBoost 迴歸模型的訓練、預測、評估與裝置偵測功能。
+提供 XGBoost 迴歸模型的訓練、預測、評估、儲存與裝置偵測功能。
 """
+
+from pathlib import Path
 
 import numpy as np
 import xgboost as xgb
@@ -146,3 +148,23 @@ def evaluate_model(
         results["directional_accuracy"] * 100,
     )
     return results
+
+
+def save_model(
+    model: xgb.XGBRegressor,
+    path: str | Path,
+) -> Path:
+    """將訓練完成的模型儲存至指定路徑。
+
+    Args:
+        model: 訓練完成的 XGBRegressor 模型。
+        path: 儲存路徑（含檔名），例如 "model/xgboost_2330.json"。
+
+    Returns:
+        儲存的完整路徑。
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    model.save_model(str(path))
+    logger.info("模型已儲存至 %s", path)
+    return path

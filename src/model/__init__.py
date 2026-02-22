@@ -8,6 +8,7 @@ from src.model.xgboost_model import (
     evaluate_model,
     get_default_params,
     predict,
+    save_model,
     train_xgboost,
 )
 
@@ -17,4 +18,5 @@ __all__ = [
     "train_xgboost",
     "predict",
     "evaluate_model",
+    "save_model",
 ]

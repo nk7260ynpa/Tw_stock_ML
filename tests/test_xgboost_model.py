@@ -1,5 +1,7 @@
 """XGBoost 模型模組單元測試。"""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from sklearn.datasets import make_regression
@@ -9,6 +11,7 @@ from src.model.xgboost_model import (
     evaluate_model,
     get_default_params,
     predict,
+    save_model,
     train_xgboost,
 )
 
@@ -200,3 +203,42 @@ class TestEvaluateModel:
             regression_data["y_test"],
         )
         assert 0.0 <= results["directional_accuracy"] <= 1.0
+
+
+class TestSaveModel:
+    """save_model 函式測試。"""
+
+    def test_save_creates_file(self, regression_data, tmp_path):
+        """應成功儲存模型檔案。"""
+        params = {
+            "n_estimators": 10,
+            "max_depth": 3,
+            "learning_rate": 0.1,
+            "device": "cpu",
+        }
+        model = train_xgboost(
+            regression_data["X_train"],
+            regression_data["y_train"],
+            params=params,
+        )
+        model_path = tmp_path / "test_model.json"
+        result = save_model(model, model_path)
+        assert result.exists()
+        assert result.stat().st_size > 0
+
+    def test_save_creates_parent_dirs(self, regression_data, tmp_path):
+        """應自動建立不存在的父資料夾。"""
+        params = {
+            "n_estimators": 10,
+            "max_depth": 3,
+            "learning_rate": 0.1,
+            "device": "cpu",
+        }
+        model = train_xgboost(
+            regression_data["X_train"],
+            regression_data["y_train"],
+            params=params,
+        )
+        model_path = tmp_path / "subdir" / "model.json"
+        result = save_model(model, model_path)
+        assert result.exists()

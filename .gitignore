@@ -210,5 +210,13 @@ __marimo__/
 logs/
 *.log
 
+# Model files
+model/*.json
+model/*.ubj
+
+# Data files
+data/*.npz
+data/*.csv
+
 # Claude
 CLAUDE.md

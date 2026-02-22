@@ -7,8 +7,10 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly IMAGE_NAME="tw-stock-ml"
 readonly CONTAINER_NAME="tw-stock-ml"
 
-# 確保 logs 資料夾存在
+# 確保資料夾存在
 mkdir -p "${SCRIPT_DIR}/logs"
+mkdir -p "${SCRIPT_DIR}/model"
+mkdir -p "${SCRIPT_DIR}/data"
 
 # 建立 Docker image
 bash "${SCRIPT_DIR}/docker/build.sh"
@@ -33,4 +35,5 @@ docker run \
     -e DB_NAME=TWSE \
     -v "${SCRIPT_DIR}/logs:/app/logs" \
     -v "${SCRIPT_DIR}/data:/app/data" \
+    -v "${SCRIPT_DIR}/model:/app/model" \
     "${IMAGE_NAME}:latest"
