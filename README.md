@@ -12,6 +12,9 @@ Tw_stock_ML/
 │   └── docker-compose.yaml # Docker Compose 設定
 ├── src/                    # 主程式碼
 │   ├── main.py             # 主程式進入點
+│   ├── database/           # 資料庫存取模組
+│   │   ├── connection.py         # 連線管理
+│   │   └── stock_repository.py   # 股票資料查詢
 │   ├── metrics/            # 模型評估指標
 │   │   ├── price_metrics.py      # 價格距離指標（MAE、RMSE、MAPE）
 │   │   └── direction_metrics.py  # 方向正確率指標
@@ -29,6 +32,7 @@ Tw_stock_ML/
 
 - Docker
 - Docker Compose
+- 台股資料庫（`Tw_stock_DB`）需先啟動，提供 `db_network` Docker 網路
 
 ## 使用方法
 
@@ -44,7 +48,7 @@ bash docker/build.sh
 bash run.sh
 ```
 
-此腳本會自動建立 Docker image、啟動 container，並掛載 `logs/` 資料夾。
+此腳本會自動建立 Docker image、建立 `db_network` 網路、啟動 container，並掛載 `logs/` 資料夾。
 
 ### 執行測試
 

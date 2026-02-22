@@ -12,4 +12,14 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
+      - DB_HOST=tw_stock_database
+      - DB_USER=root
+      - DB_PASSWORD=stock
+      - DB_NAME=TWSE
     command: python src/main.py
+    networks:
+      - db_network
+
+networks:
+  db_network:
+    external: true
