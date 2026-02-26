@@ -13,6 +13,9 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 設定 PYTHONPATH 使 import 路徑從 src 開始
+ENV PYTHONPATH=/app
+
 # 複製專案程式碼
 COPY . .
 
