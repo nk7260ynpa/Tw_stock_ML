@@ -220,3 +220,4 @@ data/*.csv
 
 # Claude
 CLAUDE.md
+.DS_Store
