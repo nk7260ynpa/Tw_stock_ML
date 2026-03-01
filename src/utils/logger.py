@@ -37,9 +37,8 @@ def setup_logger(name: str, log_level: int = logging.INFO) -> logging.Logger:
     logger.addHandler(console_handler)
 
     # 檔案輸出 handler
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__)
-    ))), "logs")
+    # 優先使用環境變數 LOG_DIR，其次使用工作目錄下的 logs/
+    log_dir = os.environ.get("LOG_DIR", os.path.join(os.getcwd(), "logs"))
     os.makedirs(log_dir, exist_ok=True)
 
     log_filename = datetime.now().strftime("%Y%m%d") + ".log"

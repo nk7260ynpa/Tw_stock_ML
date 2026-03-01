@@ -32,7 +32,8 @@ Tw_stock_ML/
 ├── model/                  # 訓練完成的模型存放
 ├── data/                   # 訓練資料存放
 ├── logs/                   # 日誌存放
-├── requirements.txt        # Python 依賴
+├── pyproject.toml          # PEP 621 專案定義（套件安裝用）
+├── requirements.txt        # Python 釘版依賴（Docker 環境用）
 ├── run.sh                  # 主程式啟動腳本
 └── README.md
 ```

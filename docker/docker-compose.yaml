@@ -12,7 +12,6 @@ services:
       - ../model:/app/model
     environment:
       - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app
       - DB_HOST=tw_stock_database
       - DB_USER=root
       - DB_PASSWORD=stock

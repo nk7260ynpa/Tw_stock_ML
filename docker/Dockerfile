@@ -9,15 +9,15 @@ RUN apt-get update && \
         g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# 複製並安裝 Python 依賴
+# 複製並安裝 Python 釘版依賴
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 設定 PYTHONPATH 使 import 路徑從 src 開始
-ENV PYTHONPATH=/app
-
 # 複製專案程式碼
 COPY . .
+
+# 以 editable 模式安裝專案套件，使 import 路徑正確解析
+RUN pip install --no-cache-dir -e .
 
 # 建立 logs 資料夾
 RUN mkdir -p /app/logs
