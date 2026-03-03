@@ -1,5 +1,8 @@
 # 台股機器學習分析系統
 
+> **版本**：1.0.0
+> **Docker Image**：`nk7260ynpa/tw-stock-ml`
+
 使用機器學習技術分析台灣股票市場的專案。
 
 ## 專案架構
@@ -65,6 +68,30 @@ bash run.sh
 ```bash
 docker compose -f docker/docker-compose.yaml run --rm tw-stock-ml pytest tests/ -v
 ```
+
+## CI/CD
+
+本專案使用 GitHub Actions 自動建置並發布 Docker image 至 DockerHub。
+
+### 觸發條件
+
+推送符合 `v*.*.*` 格式的 tag 時自動觸發：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### 發布流程
+
+1. GitHub Actions 自動建置 Docker image
+2. 同時推送版本號 tag（如 `1.0.0`）和 `latest` tag 至 DockerHub
+3. 使用 GitHub Actions cache 加速後續建置
+
+### DockerHub
+
+- Image：`nk7260ynpa/tw-stock-ml`
+- 需設定 GitHub Secrets：`DOCKER_USERNAME`、`DOCKER_PASSWORD`
 
 ## 授權條款
 
