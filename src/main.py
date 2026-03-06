@@ -1,8 +1,11 @@
 """台股機器學習分析主程式。
 
-此模組為專案進入點，負責查詢股價資料、前處理、訓練模型並評估。
+此模組為專案進入點，支援兩種模式：
+1. 批次訓練模式（預設）：查詢股價資料、前處理、訓練模型並評估。
+2. Web 模式（--web）：啟動 Flask Web Dashboard。
 """
 
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -44,9 +47,9 @@ def save_training_data(data, stock_code: str) -> None:
     logger.info("訓練資料已儲存至 %s", path)
 
 
-def main() -> None:
-    """主程式進入點。"""
-    logger.info("台股機器學習分析系統啟動")
+def run_training() -> None:
+    """執行批次訓練模式。"""
+    logger.info("台股機器學習分析系統啟動（批次訓練模式）")
 
     stock_code = "2330"
 
@@ -85,6 +88,49 @@ def main() -> None:
         model, data.X_test, data.y_test, data.base_prices.values,
     )
     logger.info("評估結果：%s", results)
+
+
+def run_web(host: str = "0.0.0.0", port: int = 5002) -> None:
+    """啟動 Flask Web Dashboard。
+
+    Args:
+        host: 監聽位址，預設 0.0.0.0。
+        port: 監聽連接埠，預設 5002。
+    """
+    from src.web import create_app
+
+    logger.info("台股 ML 預測儀表板啟動：%s:%d", host, port)
+    app = create_app()
+    app.run(host=host, port=port, debug=False)
+
+
+def main() -> None:
+    """主程式進入點，解析命令列參數並執行對應模式。"""
+    parser = argparse.ArgumentParser(description="台股機器學習分析系統")
+    parser.add_argument(
+        "--web",
+        action="store_true",
+        help="啟動 Flask Web Dashboard 模式",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=5002,
+        help="Web Dashboard 監聽連接埠（預設 5002）",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Web Dashboard 監聽位址（預設 0.0.0.0）",
+    )
+
+    args = parser.parse_args()
+
+    if args.web:
+        run_web(host=args.host, port=args.port)
+    else:
+        run_training()
 
 
 if __name__ == "__main__":

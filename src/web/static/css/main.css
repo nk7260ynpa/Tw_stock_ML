@@ -1,0 +1,498 @@
+/* 深色主題全域樣式（參考 Tw_stock_indicator） */
+:root {
+    --bg-primary: #0d1117;
+    --bg-card: #161b22;
+    --bg-input: #21262d;
+    --border: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --green: #3fb950;
+    --red: #f85149;
+    --blue: #58a6ff;
+    --yellow: #f0b90b;
+    --purple: #e491ff;
+    --orange: #ff7b72;
+    --radius: 8px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+}
+
+/* 導覽列 */
+.navbar {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+}
+
+.navbar-brand {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+/* 容器 */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* 區段 */
+.section {
+    margin-bottom: 32px;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.section-meta {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 12px;
+}
+
+/* 股票選擇器 */
+.stock-selector {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+}
+
+.stock-selector-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.selector-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.search-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-wrapper {
+    position: relative;
+}
+
+.search-input {
+    width: 100%;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 0.875rem;
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.search-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.search-dropdown.show {
+    display: block;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.15s;
+}
+
+.dropdown-item:hover {
+    background: var(--bg-input);
+}
+
+.dropdown-code {
+    font-weight: 600;
+    min-width: 50px;
+}
+
+.dropdown-name {
+    flex: 1;
+}
+
+.dropdown-empty {
+    padding: 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.date-range {
+    min-width: 240px;
+}
+
+.date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-input {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 7px 8px;
+    font-size: 0.8125rem;
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.query-action {
+    padding-bottom: 1px;
+}
+
+.stock-load-status {
+    margin-top: 12px;
+    font-size: 0.8125rem;
+    min-height: 1.2em;
+}
+
+.stock-load-status.status-info {
+    color: var(--blue);
+}
+
+.stock-load-status.status-success {
+    color: var(--green);
+}
+
+.stock-load-status.status-error {
+    color: var(--red);
+}
+
+/* 按鈕 */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn:hover {
+    background: #282e36;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+    background: var(--bg-input);
+}
+
+.btn-primary {
+    background: rgba(63, 185, 80, 0.15);
+    border-color: var(--green);
+    color: var(--green);
+}
+
+.btn-primary:hover {
+    background: rgba(63, 185, 80, 0.25);
+}
+
+.btn-primary:disabled {
+    background: rgba(63, 185, 80, 0.08);
+}
+
+.btn-calculating {
+    opacity: 0.7;
+    cursor: wait;
+    pointer-events: none;
+}
+
+/* 指標卡片網格 */
+.indicator-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+@media (max-width: 900px) {
+    .indicator-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 500px) {
+    .indicator-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* 指標卡片 */
+.indicator-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color 0.2s;
+}
+
+.indicator-card:hover {
+    border-color: var(--blue);
+}
+
+.indicator-name {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.indicator-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.indicator-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* 圖表區塊 */
+.chart-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+}
+
+.chart-main {
+    width: 100%;
+    height: 450px;
+}
+
+.chart-prediction {
+    width: 100%;
+    height: 350px;
+}
+
+.chart-sub-wrapper {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 12px;
+}
+
+.chart-sub-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.chart-sub {
+    width: 100%;
+    height: 180px;
+}
+
+/* 指標切換開關 */
+.indicator-toggles {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+    accent-color: var(--blue);
+}
+
+/* ML 預測控制 */
+.predict-controls {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.predict-status {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.predict-status.status-info {
+    color: var(--blue);
+}
+
+.predict-status.status-success {
+    color: var(--green);
+}
+
+.predict-status.status-error {
+    color: var(--red);
+}
+
+/* 特徵重要度 */
+.feature-importance-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+}
+
+.feature-importance {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.fi-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fi-rank {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    min-width: 24px;
+    text-align: right;
+}
+
+.fi-name {
+    font-size: 0.8125rem;
+    min-width: 140px;
+    color: var(--text-primary);
+}
+
+.fi-bar-wrapper {
+    flex: 1;
+    height: 20px;
+    background: var(--bg-input);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.fi-bar {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.fi-value {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    min-width: 60px;
+    text-align: right;
+}
+
+/* 動畫 */
+.fade-in {
+    animation: fadeIn 0.4s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading spinner */
+.spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 響應式 */
+@media (max-width: 700px) {
+    .stock-selector-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .chart-main {
+        height: 300px;
+    }
+
+    .chart-prediction {
+        height: 250px;
+    }
+
+    .chart-sub {
+        height: 140px;
+    }
+}

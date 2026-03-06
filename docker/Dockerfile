@@ -22,4 +22,6 @@ RUN pip install --no-cache-dir -e .
 # 建立 logs 資料夾
 RUN mkdir -p /app/logs
 
-CMD ["python", "src/main.py"]
+EXPOSE 5002
+
+CMD ["python", "src/main.py", "--web"]

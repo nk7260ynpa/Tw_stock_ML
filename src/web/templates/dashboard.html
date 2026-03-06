@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- 股票搜尋選擇器 -->
+<section class="section">
+    <h2 class="section-title">股票選擇</h2>
+    <div class="stock-selector">
+        <div class="stock-selector-row">
+            <div class="search-group">
+                <label class="selector-label">搜尋股票（代碼或名稱）</label>
+                <div class="search-wrapper">
+                    <input type="text"
+                           id="stock-search"
+                           class="search-input"
+                           placeholder="輸入股票代碼或名稱，例如：2330 或 台積電"
+                           autocomplete="off">
+                    <div id="search-dropdown" class="search-dropdown"></div>
+                </div>
+            </div>
+            <div class="date-range">
+                <label class="selector-label">日期範圍</label>
+                <div class="date-inputs">
+                    <input type="date" id="date-start" class="date-input">
+                    <span class="date-separator">~</span>
+                    <input type="date" id="date-end" class="date-input">
+                </div>
+            </div>
+            <div class="query-action">
+                <button id="btn-load" class="btn btn-primary" disabled>查詢</button>
+            </div>
+        </div>
+        <div id="stock-load-status" class="stock-load-status"></div>
+    </div>
+</section>
+
+<!-- K 線圖表 -->
+<section id="chart-section" class="section" style="display:none;">
+    <h2 class="section-title">技術分析圖表
+        <span id="chart-meta" class="section-meta"></span>
+    </h2>
+    <div class="chart-container">
+        <div class="indicator-toggles" id="indicator-toggles">
+            <label class="toggle-label"><input type="checkbox" value="sma" checked> SMA</label>
+            <label class="toggle-label"><input type="checkbox" value="ema"> EMA</label>
+            <label class="toggle-label"><input type="checkbox" value="bb"> BB</label>
+            <label class="toggle-label"><input type="checkbox" value="rsi" checked> RSI</label>
+            <label class="toggle-label"><input type="checkbox" value="macd" checked> MACD</label>
+        </div>
+        <div id="main-chart" class="chart-main"></div>
+    </div>
+    <div id="sub-charts-container"></div>
+</section>
+
+<!-- ML 預測 -->
+<section id="predict-section" class="section" style="display:none;">
+    <h2 class="section-title">ML 預測分析</h2>
+    <div class="predict-controls">
+        <button id="btn-predict" class="btn btn-primary">
+            執行 XGBoost 預測
+        </button>
+        <span id="predict-status" class="predict-status"></span>
+    </div>
+</section>
+
+<!-- 預測結果 -->
+<section id="result-section" class="section" style="display:none;">
+    <h2 class="section-title">預測結果
+        <span id="result-meta" class="section-meta"></span>
+    </h2>
+
+    <!-- 評估指標卡片 -->
+    <div id="metrics-grid" class="indicator-grid"></div>
+
+    <!-- 預測 vs 實際圖表 -->
+    <div class="chart-container" style="margin-top: 16px;">
+        <div class="chart-sub-label">預測 vs 實際收盤價</div>
+        <div id="prediction-chart" class="chart-prediction"></div>
+    </div>
+
+    <!-- 特徵重要度 -->
+    <div class="feature-importance-container" style="margin-top: 16px;">
+        <div class="chart-sub-label">特徵重要度排名（Top 15）</div>
+        <div id="feature-importance" class="feature-importance"></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

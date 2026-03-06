@@ -4,6 +4,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: tw-stock-ml
+    ports:
+      - "5002:5002"
     volumes:
       - ../logs:/app/logs
       - ../src:/app/src
@@ -16,7 +18,7 @@ services:
       - DB_USER=root
       - DB_PASSWORD=stock
       - DB_NAME=TWSE
-    command: python src/main.py
+    command: python src/main.py --web
     networks:
       - db_network
 

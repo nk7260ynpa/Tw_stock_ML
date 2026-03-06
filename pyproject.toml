@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tw-stock-ml"
-version = "0.1.0"
+version = "0.2.0"
 description = "台股機器學習分析系統"
 requires-python = ">=3.11"
 license = "MIT"
@@ -16,6 +16,7 @@ dependencies = [
     "sqlalchemy",
     "pymysql",
     "cryptography",
+    "flask",
 ]
 
 [project.optional-dependencies]
@@ -26,3 +27,10 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = ["src*"]
+
+[tool.setuptools.package-data]
+"src.web" = [
+    "templates/**/*.html",
+    "static/**/*.css",
+    "static/**/*.js",
+]
