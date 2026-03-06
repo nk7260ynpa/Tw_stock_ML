@@ -299,7 +299,7 @@ def _safe_float(value) -> float | None:
         return None
 
 
-_FEATURE_NAME_ZH = {
+_INDICATOR_NAME_ZH = {
     "Return": "日報酬率",
     "SMA_5": "5日均線(SMA5)",
     "SMA_10": "10日均線(SMA10)",
@@ -316,6 +316,42 @@ _FEATURE_NAME_ZH = {
     "ATR_14": "平均真實範圍(ATR14)",
     "Volume_MA_5": "5日成交量均線",
 }
+
+_translate_cache: dict[str, str] | None = None
+
+
+def _load_translate_table() -> dict[str, str]:
+    """從 TWSE.Translate 載入英中對照表（帶快取）。"""
+    global _translate_cache
+    if _translate_cache is not None:
+        return _translate_cache
+
+    try:
+        engine = get_engine()
+        df = pd.read_sql("SELECT English, Chinese FROM TWSE.Translate", engine)
+        _translate_cache = dict(zip(df["English"], df["Chinese"]))
+    except Exception:
+        logger.warning("無法載入 TWSE.Translate 對照表，使用本地映射")
+        _translate_cache = {}
+
+    return _translate_cache
+
+
+def _translate_feature_name(name: str) -> str:
+    """將特徵英文名稱翻譯為中文。
+
+    優先查詢 TWSE.Translate 對照表，不存在則查本地技術指標映射。
+
+    Args:
+        name: 特徵英文名稱。
+
+    Returns:
+        中文名稱，若無對照則回傳原始名稱。
+    """
+    translate = _load_translate_table()
+    if name in translate:
+        return translate[name]
+    return _INDICATOR_NAME_ZH.get(name, name)
 
 
 def _get_feature_importance(model, feature_names: list[str]) -> list[dict]:
@@ -335,7 +371,7 @@ def _get_feature_importance(model, feature_names: list[str]) -> list[dict]:
     result = []
     for name, imp in paired[:20]:
         result.append({
-            "name": _FEATURE_NAME_ZH.get(name, name),
+            "name": _translate_feature_name(name),
             "importance": round(float(imp), 6),
         })
 
