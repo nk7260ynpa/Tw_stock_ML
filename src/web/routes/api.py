@@ -381,6 +381,25 @@ def _build_indicator_series(df: pd.DataFrame) -> dict:
     return series
 
 
+_FEATURE_NAME_ZH = {
+    "Return": "日報酬率",
+    "SMA_5": "5日均線(SMA5)",
+    "SMA_10": "10日均線(SMA10)",
+    "SMA_20": "20日均線(SMA20)",
+    "EMA_12": "12日指數均線(EMA12)",
+    "EMA_26": "26日指數均線(EMA26)",
+    "RSI_14": "相對強弱指標(RSI14)",
+    "MACD": "MACD(DIF)",
+    "MACD_Signal": "MACD訊號線",
+    "MACD_Hist": "MACD柱狀體(OSC)",
+    "BB_Upper": "布林上軌",
+    "BB_Lower": "布林下軌",
+    "BB_PctB": "布林%B",
+    "ATR_14": "平均真實範圍(ATR14)",
+    "Volume_MA_5": "5日成交量均線",
+}
+
+
 def _get_feature_importance(model, feature_names: list[str]) -> list[dict]:
     """取得 XGBoost 模型的特徵重要度排名。
 
@@ -398,7 +417,7 @@ def _get_feature_importance(model, feature_names: list[str]) -> list[dict]:
     result = []
     for name, imp in paired[:20]:
         result.append({
-            "name": name,
+            "name": _FEATURE_NAME_ZH.get(name, name),
             "importance": round(float(imp), 6),
         })
 
