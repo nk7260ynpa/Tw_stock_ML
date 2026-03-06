@@ -25,7 +25,6 @@ from src.model.xgboost_model import (
     train_xgboost,
 )
 from src.preprocessing.pipeline import preprocess_indicator_pipeline
-from src.preprocessing.technical_indicators import compute_all_indicators
 from src.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -160,51 +159,6 @@ def get_stock_detail(code: str):
         return jsonify({"error": "資料庫查詢失敗"}), 500
 
     return jsonify(result)
-
-
-@api_bp.route("/stocks/<code>/indicators")
-def get_stock_indicators(code: str):
-    """取得股票技術指標資料（用於圖表疊加）。
-
-    Path Params:
-        code: 股票代碼。
-
-    Query Params:
-        start: 起始日期（YYYY-MM-DD），選填。
-        end: 結束日期（YYYY-MM-DD），選填。
-
-    Returns:
-        含技術指標的日線資料 JSON。
-    """
-    start_str = request.args.get("start", "")
-    end_str = request.args.get("end", "")
-
-    start_date = None
-    end_date = None
-
-    try:
-        if start_str:
-            start_date = date.fromisoformat(start_str)
-        if end_str:
-            end_date = date.fromisoformat(end_str)
-    except ValueError:
-        return jsonify({"error": "日期格式錯誤，請使用 YYYY-MM-DD"}), 400
-
-    try:
-        engine = get_engine()
-        df = get_daily_prices(engine, code, start_date, end_date)
-
-        if df.empty:
-            return jsonify({"error": "查無資料"}), 404
-
-        df_ind = compute_all_indicators(df, drop_warmup_rows=False)
-
-        indicator_series = _build_indicator_series(df_ind)
-    except Exception:
-        logger.exception("技術指標計算失敗：%s", code)
-        return jsonify({"error": "技術指標計算失敗"}), 500
-
-    return jsonify(indicator_series)
 
 
 @api_bp.route("/predict", methods=["POST"])
@@ -343,42 +297,6 @@ def _safe_float(value) -> float | None:
         return f
     except (ValueError, TypeError):
         return None
-
-
-def _build_indicator_series(df: pd.DataFrame) -> dict:
-    """從含技術指標的 DataFrame 建構前端需要的指標序列。
-
-    Args:
-        df: 含技術指標欄位的 DataFrame。
-
-    Returns:
-        指標序列字典，key 為指標名稱，value 為陣列。
-    """
-    indicator_map = {
-        "SMA_5": "MA5",
-        "SMA_10": "MA10",
-        "SMA_20": "MA20",
-        "EMA_12": "EMA12",
-        "EMA_26": "EMA26",
-        "RSI_14": "RSI14",
-        "MACD": "DIF",
-        "MACD_Signal": "MACD",
-        "MACD_Hist": "OSC",
-        "BB_Upper": "BB_Upper",
-        "BB_Lower": "BB_Lower",
-    }
-
-    series = {}
-    for col, label in indicator_map.items():
-        if col in df.columns:
-            values = df[col].tolist()
-            series[label] = [
-                None if (v is None or (isinstance(v, float) and np.isnan(v)))
-                else round(v, 4)
-                for v in values
-            ]
-
-    return series
 
 
 _FEATURE_NAME_ZH = {

@@ -1,7 +1,7 @@
 /**
  * ML Dashboard 頁面互動邏輯。
  *
- * 負責股票搜尋、日線載入、指標切換、ML 預測觸發與結果渲染。
+ * 負責股票搜尋、日線載入、ML 預測觸發與結果渲染。
  */
 
 (function () {
@@ -12,7 +12,6 @@
         selectedCode: '',
         selectedName: '',
         dailyData: null,
-        indicatorSeries: null,
         searchTimer: null,
     };
 
@@ -26,8 +25,6 @@
         els.dateEnd = document.getElementById('date-end');
         els.btnLoad = document.getElementById('btn-load');
         els.loadStatus = document.getElementById('stock-load-status');
-        els.chartSection = document.getElementById('chart-section');
-        els.chartMeta = document.getElementById('chart-meta');
         els.predictSection = document.getElementById('predict-section');
         els.btnPredict = document.getElementById('btn-predict');
         els.predictStatus = document.getElementById('predict-status');
@@ -35,7 +32,6 @@
         els.resultMeta = document.getElementById('result-meta');
         els.metricsGrid = document.getElementById('metrics-grid');
         els.featureImportance = document.getElementById('feature-importance');
-        els.indicatorToggles = document.getElementById('indicator-toggles');
     }
 
     /* ---------- 預設日期 ---------- */
@@ -141,18 +137,9 @@
         if (end) params.push('end=' + end);
         if (params.length > 0) url += '?' + params.join('&');
 
-        // 同時載入日線和技術指標
-        var indicatorUrl = '/api/stocks/' + state.selectedCode + '/indicators';
-        if (params.length > 0) indicatorUrl += '?' + params.join('&');
-
-        Promise.all([
-            fetch(url).then(function (res) { return res.json(); }),
-            fetch(indicatorUrl).then(function (res) { return res.json(); }),
-        ])
-            .then(function (results) {
-                var dailyData = results[0];
-                var indicators = results[1];
-
+        fetch(url)
+            .then(function (res) { return res.json(); })
+            .then(function (dailyData) {
                 if (dailyData.error) {
                     setStatus(els.loadStatus, 'error', dailyData.error);
                     els.btnLoad.disabled = false;
@@ -166,7 +153,6 @@
                 }
 
                 state.dailyData = dailyData;
-                state.indicatorSeries = indicators.error ? null : indicators;
 
                 setStatus(
                     els.loadStatus, 'success',
@@ -174,13 +160,6 @@
                     ' - 共 ' + dailyData.length + ' 筆資料'
                 );
                 els.btnLoad.disabled = false;
-
-                // 顯示圖表
-                renderChart();
-                els.chartSection.style.display = '';
-                els.chartSection.classList.add('fade-in');
-                els.chartMeta.textContent =
-                    state.selectedCode + ' ' + state.selectedName;
 
                 // 顯示預測區塊
                 els.predictSection.style.display = '';
@@ -192,22 +171,6 @@
                 setStatus(els.loadStatus, 'error', '載入失敗：' + err.message);
                 els.btnLoad.disabled = false;
             });
-    }
-
-    /* ---------- 圖表渲染 ---------- */
-    function getToggles() {
-        var toggles = { sma: false, ema: false, bb: false, rsi: false, macd: false };
-        var checkboxes = els.indicatorToggles.querySelectorAll('input[type="checkbox"]');
-        for (var i = 0; i < checkboxes.length; i++) {
-            toggles[checkboxes[i].value] = checkboxes[i].checked;
-        }
-        return toggles;
-    }
-
-    function renderChart() {
-        if (!state.dailyData) return;
-        var toggles = getToggles();
-        window.StockChart.render(state.dailyData, state.indicatorSeries, toggles);
     }
 
     /* ---------- ML 預測 ---------- */
@@ -368,11 +331,6 @@
 
         // 預測按鈕
         els.btnPredict.addEventListener('click', handlePredict);
-
-        // 指標切換
-        els.indicatorToggles.addEventListener('change', function () {
-            renderChart();
-        });
     }
 
     // DOM 載入完成後初始化

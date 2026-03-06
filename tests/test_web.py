@@ -57,10 +57,10 @@ class TestDashboardRoute:
         response = client.get("/")
         assert "stock-search" in response.data.decode("utf-8")
 
-    def test_index_contains_chart_section(self, client):
-        """首頁應包含圖表區塊。"""
+    def test_index_contains_prediction_chart(self, client):
+        """首頁應包含預測圖表區塊。"""
         response = client.get("/")
-        assert "main-chart" in response.data.decode("utf-8")
+        assert "prediction-chart" in response.data.decode("utf-8")
 
     def test_index_contains_predict_button(self, client):
         """首頁應包含預測按鈕。"""
