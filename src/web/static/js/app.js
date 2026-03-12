@@ -252,16 +252,26 @@
                 desc: '平均絕對百分比誤差',
             },
             {
-                name: '方向正確率',
-                value: metrics.directional_accuracy.toFixed(1) + '%',
-                desc: '預測漲跌方向的準確率',
+                name: '高於實際價格',
+                value: metrics.above_actual_count + ' 筆（' +
+                    metrics.above_actual_ratio.toFixed(1) + '%）',
+                desc: '預測價格高於實際價格的筆數',
+                cssClass: 'metric-above',
+            },
+            {
+                name: '低於實際價格',
+                value: metrics.below_actual_count + ' 筆（' +
+                    metrics.below_actual_ratio.toFixed(1) + '%）',
+                desc: '預測價格低於實際價格的筆數',
+                cssClass: 'metric-below',
             },
         ];
 
         var html = '';
         for (var i = 0; i < cards.length; i++) {
             var c = cards[i];
-            html += '<div class="indicator-card">' +
+            var extraClass = c.cssClass ? ' ' + c.cssClass : '';
+            html += '<div class="indicator-card' + extraClass + '">' +
                 '<div class="indicator-name">' + c.name + '</div>' +
                 '<div class="indicator-value">' + c.value + '</div>' +
                 '<div class="indicator-desc">' + c.desc + '</div>' +

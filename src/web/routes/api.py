@@ -174,7 +174,7 @@ def run_predict():
     Returns:
         JSON 含：
         - predictions: 預測結果（日期、實際值、預測值）。
-        - metrics: 評估指標（MAE、RMSE、MAPE、方向正確率）。
+        - metrics: 評估指標（MAE、RMSE、MAPE、高於/低於實際價格統計）。
         - feature_importance: 特徵重要度排名。
     """
     data = request.get_json()
@@ -266,11 +266,16 @@ def run_predict():
             "price_MAE": round(eval_results["price_MAE"], 2),
             "price_RMSE": round(eval_results["price_RMSE"], 2),
             "price_MAPE": round(eval_results["price_MAPE"], 2),
-            "directional_accuracy": round(
-                eval_results["directional_accuracy"] * 100, 2,
-            ),
             "return_MAE": round(eval_results["return_MAE"], 6),
             "return_RMSE": round(eval_results["return_RMSE"], 6),
+            "above_actual_count": eval_results["above_actual_count"],
+            "below_actual_count": eval_results["below_actual_count"],
+            "above_actual_ratio": round(
+                eval_results["above_actual_ratio"] * 100, 2,
+            ),
+            "below_actual_ratio": round(
+                eval_results["below_actual_ratio"] * 100, 2,
+            ),
         }
 
         result = {

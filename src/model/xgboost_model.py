@@ -245,7 +245,10 @@ def evaluate_return_model(
         - price_MAE: 逆推價格 MAE。
         - price_RMSE: 逆推價格 RMSE。
         - price_MAPE: 逆推價格 MAPE (%)。
-        - directional_accuracy: 方向正確率。
+        - above_actual_count: 預測價格高於實際價格的筆數。
+        - below_actual_count: 預測價格低於實際價格的筆數。
+        - above_actual_ratio: 預測價格高於實際價格的比例。
+        - below_actual_ratio: 預測價格低於實際價格的比例。
     """
     y_pred_return = predict(model, X_test)
 
@@ -262,8 +265,12 @@ def evaluate_return_model(
     price_rmse_val = rmse(actual_prices, predicted_prices)
     price_mape_val = mape(actual_prices, predicted_prices)
 
-    # 方向正確率（用逆推價格計算）
-    da = directional_accuracy(actual_prices, predicted_prices)
+    # 高於/低於實際價格統計
+    total = len(actual_prices)
+    above_count = int(np.sum(predicted_prices > actual_prices))
+    below_count = int(np.sum(predicted_prices < actual_prices))
+    above_ratio = float(above_count / total) if total > 0 else 0.0
+    below_ratio = float(below_count / total) if total > 0 else 0.0
 
     results = {
         "return_MAE": return_mae_val,
@@ -271,15 +278,21 @@ def evaluate_return_model(
         "price_MAE": price_mae_val,
         "price_RMSE": price_rmse_val,
         "price_MAPE": price_mape_val,
-        "directional_accuracy": da,
+        "above_actual_count": above_count,
+        "below_actual_count": below_count,
+        "above_actual_ratio": above_ratio,
+        "below_actual_ratio": below_ratio,
     }
 
     logger.info(
         "報酬率模型評估完成 — 報酬率 MAE: %.6f, 價格 MAE: %.2f, "
-        "價格 MAPE: %.2f%%, 方向正確率: %.2f%%",
+        "價格 MAPE: %.2f%%, 高於實際: %d 筆(%.1f%%), 低於實際: %d 筆(%.1f%%)",
         results["return_MAE"],
         results["price_MAE"],
         results["price_MAPE"],
-        results["directional_accuracy"] * 100,
+        above_count,
+        above_ratio * 100,
+        below_count,
+        below_ratio * 100,
     )
     return results

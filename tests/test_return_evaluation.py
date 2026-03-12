@@ -84,16 +84,17 @@ class TestEvaluateReturnModel:
         expected_keys = {
             "return_MAE", "return_RMSE",
             "price_MAE", "price_RMSE", "price_MAPE",
-            "directional_accuracy",
+            "above_actual_count", "below_actual_count",
+            "above_actual_ratio", "below_actual_ratio",
         }
         assert set(results.keys()) == expected_keys
 
-    def test_all_values_are_float(self, trained_model, test_data):
-        """所有指標值為浮點數。"""
+    def test_all_values_are_numeric(self, trained_model, test_data):
+        """所有指標值為數值型別（float 或 int）。"""
         X_test, y_test, base_prices = test_data
         results = evaluate_return_model(trained_model, X_test, y_test, base_prices)
         for key, val in results.items():
-            assert isinstance(val, float), f"{key} 不是 float"
+            assert isinstance(val, (float, int)), f"{key} 不是數值型別"
 
     def test_non_negative_metrics(self, trained_model, test_data):
         """MAE、RMSE、MAPE 為非負數。"""
@@ -105,11 +106,35 @@ class TestEvaluateReturnModel:
         assert results["price_RMSE"] >= 0
         assert results["price_MAPE"] >= 0
 
-    def test_directional_accuracy_range(self, trained_model, test_data):
-        """方向正確率在 0~1 之間。"""
+    def test_above_below_counts(self, trained_model, test_data):
+        """高於/低於實際價格筆數之和應等於（或小於等於）測試筆數。"""
         X_test, y_test, base_prices = test_data
         results = evaluate_return_model(trained_model, X_test, y_test, base_prices)
-        assert 0 <= results["directional_accuracy"] <= 1
+        total = len(y_test)
+        above = results["above_actual_count"]
+        below = results["below_actual_count"]
+        assert above >= 0
+        assert below >= 0
+        # 加上「相等」的筆數，總和應等於 total
+        assert above + below <= total
+
+    def test_above_below_ratios(self, trained_model, test_data):
+        """高於/低於比例在 0~1 之間且總和 <= 1。"""
+        X_test, y_test, base_prices = test_data
+        results = evaluate_return_model(trained_model, X_test, y_test, base_prices)
+        assert 0 <= results["above_actual_ratio"] <= 1
+        assert 0 <= results["below_actual_ratio"] <= 1
+        assert results["above_actual_ratio"] + results["below_actual_ratio"] <= 1.0 + 1e-9
+
+    def test_above_below_count_matches_ratio(self, trained_model, test_data):
+        """筆數與比例應一致。"""
+        X_test, y_test, base_prices = test_data
+        results = evaluate_return_model(trained_model, X_test, y_test, base_prices)
+        total = len(y_test)
+        expected_above_ratio = results["above_actual_count"] / total
+        expected_below_ratio = results["below_actual_count"] / total
+        assert abs(results["above_actual_ratio"] - expected_above_ratio) < 1e-9
+        assert abs(results["below_actual_ratio"] - expected_below_ratio) < 1e-9
 
     def test_price_reconstruction_reasonable(self, trained_model, test_data):
         """價格逆推結果合理（base=1000，日報酬率 ~1%，價格 MAE 應遠小於 100）。"""

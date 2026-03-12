@@ -262,11 +262,17 @@ body {
 /* 指標卡片網格 */
 .indicator-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+    .indicator-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
     .indicator-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -289,6 +295,30 @@ body {
 
 .indicator-card:hover {
     border-color: var(--blue);
+}
+
+.indicator-card.metric-above {
+    border-color: rgba(248, 81, 73, 0.4);
+}
+
+.indicator-card.metric-above .indicator-value {
+    color: var(--red);
+}
+
+.indicator-card.metric-above:hover {
+    border-color: var(--red);
+}
+
+.indicator-card.metric-below {
+    border-color: rgba(63, 185, 80, 0.4);
+}
+
+.indicator-card.metric-below .indicator-value {
+    color: var(--green);
+}
+
+.indicator-card.metric-below:hover {
+    border-color: var(--green);
 }
 
 .indicator-name {
