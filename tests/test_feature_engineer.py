@@ -6,11 +6,13 @@ import pytest
 
 from src.preprocessing.feature_engineer import (
     build_feature_target,
+    build_feature_target_with_indicators,
     build_feature_target_with_indicators_forward,
     create_target,
     create_target_return_forward,
     select_features,
 )
+from src.preprocessing.technical_indicators import compute_all_indicators
 
 
 @pytest.fixture
@@ -202,3 +204,66 @@ class TestBuildFeatureTargetWithIndicatorsForward:
         )
         # horizon 越大，有效資料越少（末尾被截斷更多）
         assert len(target_5) > len(target_10)
+
+
+@pytest.fixture
+def daily_price_df_with_zero():
+    """建立含 ClosingPrice=0 的 100 筆模擬行情，模擬 2317 零值問題。"""
+    n = 100
+    np.random.seed(42)
+    base_price = 500.0
+    prices = base_price + np.cumsum(np.random.randn(n) * 2)
+    prices = np.maximum(prices, 1.0)  # 確保正值
+    # 在中間插入一筆全零記錄
+    prices[50] = 0.0
+    opening = prices + np.random.randn(n)
+    opening[50] = 0.0
+    highest = prices + abs(np.random.randn(n)) * 3
+    highest[50] = 0.0
+    lowest = prices - abs(np.random.randn(n)) * 3
+    lowest[50] = 0.0
+    return pd.DataFrame({
+        "Date": pd.date_range("2024-01-02", periods=n, freq="B"),
+        "SecurityCode": ["2317"] * n,
+        "OpeningPrice": opening,
+        "HighestPrice": highest,
+        "LowestPrice": lowest,
+        "ClosingPrice": prices,
+        "TradeVolume": np.random.randint(20000, 50000, n).astype(float),
+    })
+
+
+class TestInfHandling:
+    """inf 值處理測試 — 驗證含零值資料不會產生 inf。"""
+
+    def test_compute_all_indicators_no_inf(self, daily_price_df_with_zero):
+        """compute_all_indicators 輸出不應包含 inf。"""
+        result = compute_all_indicators(
+            daily_price_df_with_zero, drop_warmup_rows=True,
+        )
+        numeric_cols = result.select_dtypes(include=[np.number]).columns
+        assert not np.isinf(result[numeric_cols].values).any(), (
+            "compute_all_indicators 輸出含有 inf 值"
+        )
+
+    def test_build_forward_no_inf(self, daily_price_df_with_zero):
+        """build_feature_target_with_indicators_forward 不應產生 inf。"""
+        features, target, _ = build_feature_target_with_indicators_forward(
+            daily_price_df_with_zero, horizon=5,
+        )
+        assert not np.isinf(target.values).any(), "target 含有 inf 值"
+        numeric_cols = features.select_dtypes(include=[np.number]).columns
+        assert not np.isinf(features[numeric_cols].values).any(), (
+            "features 含有 inf 值"
+        )
+
+    def test_build_indicators_return_no_inf(self, daily_price_df_with_zero):
+        """build_feature_target_with_indicators (return) 不應產生 inf。"""
+        features, target, _ = build_feature_target_with_indicators(
+            daily_price_df_with_zero, target_type="return",
+        )
+        assert not np.isinf(target.values).any(), "target 含有 inf 值"
+        numeric_cols = features.select_dtypes(include=[np.number]).columns
+        assert not np.isinf(features[numeric_cols].values).any(), (
+            "features 含有 inf 值"
+        )

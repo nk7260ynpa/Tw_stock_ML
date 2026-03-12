@@ -102,3 +102,45 @@ class TestPreprocessForwardPipeline:
             max_train = pd.Timestamp(result.train_dates.max())
             min_test = pd.Timestamp(result.test_dates.min())
             assert max_train < min_test
+
+
+@pytest.fixture
+def daily_df_with_zero():
+    """建立含 ClosingPrice=0 的 300 筆模擬行情，模擬零值問題。"""
+    n = 300
+    np.random.seed(42)
+    base_price = 500.0
+    prices = base_price + np.cumsum(np.random.randn(n) * 2)
+    prices = np.maximum(prices, 1.0)
+    # 在中間插入零值記錄
+    prices[150] = 0.0
+    opening = prices + np.random.randn(n)
+    opening[150] = 0.0
+    highest = prices + abs(np.random.randn(n)) * 3
+    highest[150] = 0.0
+    lowest = prices - abs(np.random.randn(n)) * 3
+    lowest[150] = 0.0
+    return pd.DataFrame({
+        "Date": pd.date_range("2023-01-02", periods=n, freq="B"),
+        "SecurityCode": ["2317"] * n,
+        "OpeningPrice": opening,
+        "HighestPrice": highest,
+        "LowestPrice": lowest,
+        "ClosingPrice": prices,
+        "TradeVolume": np.random.randint(20000, 50000, n).astype(float),
+    })
+
+
+class TestForwardPipelineWithZeroValues:
+    """含零值資料的前瞻管線測試。"""
+
+    def test_pipeline_completes_with_zero_price(self, daily_df_with_zero):
+        """含零值的資料應能正常完成管線處理，不會因 inf 而失敗。"""
+        result = preprocess_forward_pipeline(
+            daily_df_with_zero, window_size=20, horizon=5,
+        )
+        assert isinstance(result, ForwardIndicatorData)
+        assert not np.isinf(result.X_train).any(), "X_train 含有 inf 值"
+        assert not np.isinf(result.X_test).any(), "X_test 含有 inf 值"
+        assert not np.isinf(result.y_train).any(), "y_train 含有 inf 值"
+        assert not np.isinf(result.y_test).any(), "y_test 含有 inf 值"

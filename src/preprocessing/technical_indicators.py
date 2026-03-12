@@ -3,6 +3,7 @@
 提供常用技術指標計算功能，包含移動平均、RSI、MACD、布林帶、ATR 等。
 """
 
+import numpy as np
 import pandas as pd
 
 from src.utils.logger import setup_logger
@@ -237,6 +238,7 @@ def compute_all_indicators(
 
     if drop_warmup_rows:
         before = len(result)
+        result = result.replace([np.inf, -np.inf], np.nan)
         result = result.dropna().reset_index(drop=True)
         dropped = before - len(result)
         logger.info("技術指標計算完成，移除 %d 筆暖身期資料，剩餘 %d 筆", dropped, len(result))

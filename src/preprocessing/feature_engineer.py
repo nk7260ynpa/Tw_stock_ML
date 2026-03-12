@@ -265,7 +265,8 @@ def build_feature_target_with_indicators_forward(
         ]
     features = df_ind[feature_columns].copy()
 
-    # 移除 NaN 行（末尾 horizon 筆 target 為 NaN）
+    # 移除 NaN / inf 行（末尾 horizon 筆 target 為 NaN，close=0 時產生 inf）
+    target = target.replace([np.inf, -np.inf], np.nan)
     valid_mask = target.notna()
     features = features.loc[valid_mask].reset_index(drop=True)
     target = target.loc[valid_mask].reset_index(drop=True)
@@ -332,7 +333,8 @@ def build_feature_target_with_indicators(
         ]
     features = df_ind[feature_columns].copy()
 
-    # 移除最後一列（target 為 NaN）
+    # 移除 NaN / inf 行（最後一列 target 為 NaN，close=0 時產生 inf）
+    target = target.replace([np.inf, -np.inf], np.nan)
     valid_mask = target.notna()
     features = features.loc[valid_mask].reset_index(drop=True)
     target = target.loc[valid_mask].reset_index(drop=True)
