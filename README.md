@@ -11,7 +11,7 @@
 - **Web Dashboard**：深色主題 UI，支援股票搜尋、K 線圖表、技術指標疊加、ML 預測分析
 - **K 線圖表**：TradingView Lightweight Charts v4，台股慣例紅漲綠跌
 - **技術指標**：SMA、EMA、RSI、MACD、布林帶、ATR
-- **ML 預測**：XGBoost 模型訓練與預測，顯示評估指標與特徵重要度
+- **ML 預測**：XGBoost 模型，使用過去 60 個交易日技術指標展平特徵，預測未來第 20 個交易日的報酬率並逆推價格，含未來預測功能
 - **批次訓練**：命令列模式，查詢股價資料、前處理、訓練模型並評估
 
 ## 專案架構
@@ -119,19 +119,45 @@ docker compose -f docker/docker-compose.yaml run --rm tw-stock-ml pytest tests/ 
 // Response
 {
     "stock_code": "2330",
-    "train_samples": 180,
-    "test_samples": 45,
-    "n_features": 20,
-    "predictions": [{"date": "2024-01-02", "actual": 590.0, "predicted": 588.5}],
+    "train_samples": 150,
+    "test_samples": 38,
+    "n_features": 1200,
+    "window_size": 60,
+    "horizon": 20,
+    "predictions": [
+        {
+            "predict_date": "2024-06-01",
+            "target_date": "2024-06-28",
+            "actual": 590.0,
+            "predicted": 588.5
+        }
+    ],
     "metrics": {
         "price_MAE": 5.23,
         "price_RMSE": 7.12,
         "price_MAPE": 0.89,
-        "directional_accuracy": 55.56
+        "directional_accuracy": 55.56,
+        "return_MAE": 0.012345,
+        "return_RMSE": 0.015678
     },
-    "feature_importance": [{"name": "ClosingPrice", "importance": 0.234}]
+    "feature_importance": [{"name": "ClosingPrice", "importance": 0.234}],
+    "future_prediction": {
+        "predict_date": "2024-12-20",
+        "target_date": "2025-01-17",
+        "predicted_price": 595.50,
+        "predicted_return": 0.009328,
+        "base_price": 590.0
+    }
 }
 ```
+
+### 預測機制說明
+
+- **訓練樣本**：每筆樣本 = 過去 60 個交易日的所有技術指標展平（約 20 個指標 x 60 天 = 1200 維特徵）
+- **預測目標**：第 t+20 天的報酬率 = (Close_{t+20} - Close_t) / Close_t
+- **價格逆推**：predicted_price = base_price * (1 + predicted_return)，base_price 為視窗最後一天的收盤價
+- **未來預測**：使用最近 60 天資料預測未來第 20 個交易日的價格
+- **資料門檻**：至少需要 200 筆日線資料
 
 ## CI/CD
 

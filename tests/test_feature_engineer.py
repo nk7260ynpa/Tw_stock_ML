@@ -1,11 +1,14 @@
 """特徵工程模組單元測試。"""
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from src.preprocessing.feature_engineer import (
     build_feature_target,
+    build_feature_target_with_indicators_forward,
     create_target,
+    create_target_return_forward,
     select_features,
 )
 
@@ -122,3 +125,80 @@ class TestBuildFeatureTarget:
             daily_price_df, feature_columns=["OpeningPrice", "ClosingPrice"],
         )
         assert list(features.columns) == ["OpeningPrice", "ClosingPrice"]
+
+
+class TestCreateTargetReturnForward:
+    """create_target_return_forward 函式測試。"""
+
+    def test_returns_correct_horizon_return(self, daily_price_df):
+        """應正確計算前瞻 horizon 天的報酬率。"""
+        horizon = 3
+        result = create_target_return_forward(daily_price_df, horizon=horizon)
+        # 第 0 筆：(Close[3] - Close[0]) / Close[0] = (590 - 583) / 583
+        expected = (590.0 - 583.0) / 583.0
+        assert abs(result.iloc[0] - expected) < 1e-10
+
+    def test_last_horizon_rows_are_nan(self, daily_price_df):
+        """末尾 horizon 筆應為 NaN。"""
+        horizon = 3
+        result = create_target_return_forward(daily_price_df, horizon=horizon)
+        # 最後 3 筆應為 NaN
+        assert result.iloc[-3:].isna().all()
+        # 前 7 筆不應為 NaN
+        assert result.iloc[:-3].notna().all()
+
+    def test_raises_on_missing_column(self, daily_price_df):
+        """缺少目標欄位時應拋出 KeyError。"""
+        with pytest.raises(KeyError, match="不存在的欄位"):
+            create_target_return_forward(
+                daily_price_df, target_column="不存在的欄位",
+            )
+
+
+@pytest.fixture
+def large_daily_price_df():
+    """建立 100 筆模擬每日行情 DataFrame，用於技術指標測試。"""
+    n = 100
+    np.random.seed(42)
+    base_price = 500.0
+    prices = base_price + np.cumsum(np.random.randn(n) * 2)
+    return pd.DataFrame({
+        "Date": pd.date_range("2024-01-02", periods=n, freq="B"),
+        "SecurityCode": ["2330"] * n,
+        "OpeningPrice": prices + np.random.randn(n),
+        "HighestPrice": prices + abs(np.random.randn(n)) * 3,
+        "LowestPrice": prices - abs(np.random.randn(n)) * 3,
+        "ClosingPrice": prices,
+        "TradeVolume": np.random.randint(20000, 50000, n).astype(float),
+    })
+
+
+class TestBuildFeatureTargetWithIndicatorsForward:
+    """build_feature_target_with_indicators_forward 函式測試。"""
+
+    def test_returns_correct_tuple_types(self, large_daily_price_df):
+        """應回傳 (DataFrame, Series, Series) 三元組。"""
+        features, target, dates = build_feature_target_with_indicators_forward(
+            large_daily_price_df, horizon=5,
+        )
+        assert isinstance(features, pd.DataFrame)
+        assert isinstance(target, pd.Series)
+        assert isinstance(dates, pd.Series)
+
+    def test_removes_nan_rows(self, large_daily_price_df):
+        """目標值不應包含 NaN。"""
+        _, target, _ = build_feature_target_with_indicators_forward(
+            large_daily_price_df, horizon=5,
+        )
+        assert not target.isna().any()
+
+    def test_horizon_parameter(self, large_daily_price_df):
+        """不同 horizon 應產生不同長度的資料。"""
+        _, target_5, _ = build_feature_target_with_indicators_forward(
+            large_daily_price_df, horizon=5,
+        )
+        _, target_10, _ = build_feature_target_with_indicators_forward(
+            large_daily_price_df, horizon=10,
+        )
+        # horizon 越大，有效資料越少（末尾被截斷更多）
+        assert len(target_5) > len(target_10)

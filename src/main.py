@@ -15,11 +15,11 @@ from src.database.stock_repository import get_daily_prices
 from src.model.xgboost_model import (
     detect_device,
     evaluate_return_model,
-    get_small_data_params,
+    get_high_dim_params,
     save_model,
     train_xgboost,
 )
-from src.preprocessing.pipeline import preprocess_indicator_pipeline
+from src.preprocessing.pipeline import preprocess_forward_pipeline
 from src.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -58,21 +58,23 @@ def run_training() -> None:
     df = get_daily_prices(engine, stock_code)
     logger.info("取得 %d 筆 %s 股價資料", len(df), stock_code)
 
-    # 前處理（技術指標 + 報酬率目標）
-    data = preprocess_indicator_pipeline(df, target_type="return")
+    # 前處理（前瞻指標滑動視窗管線）
+    data = preprocess_forward_pipeline(df)
     logger.info(
-        "前處理完成：訓練 %d 筆（%d 維特徵），測試 %d 筆",
+        "前處理完成：訓練 %d 筆（%d 維特徵），測試 %d 筆，window=%d, horizon=%d",
         data.X_train.shape[0],
         data.X_train.shape[1],
         data.X_test.shape[0],
+        data.window_size,
+        data.horizon,
     )
 
     # 儲存訓練資料
     save_training_data(data, stock_code)
 
-    # 小資料參數 + 訓練模型
+    # 高維特徵參數 + 訓練模型
     device = detect_device()
-    params = get_small_data_params(device)
+    params = get_high_dim_params(device)
     model = train_xgboost(
         data.X_train, data.y_train,
         data.X_test, data.y_test,
@@ -85,7 +87,7 @@ def run_training() -> None:
 
     # 報酬率 + 價格雙重評估
     results = evaluate_return_model(
-        model, data.X_test, data.y_test, data.base_prices.values,
+        model, data.X_test, data.y_test, data.base_prices_test.values,
     )
     logger.info("評估結果：%s", results)
 

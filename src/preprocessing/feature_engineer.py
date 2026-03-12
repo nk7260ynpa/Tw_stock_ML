@@ -196,6 +196,94 @@ def create_target_return(
     return (close.shift(-1) - close) / close
 
 
+def create_target_return_forward(
+    df: pd.DataFrame,
+    target_column: str = "ClosingPrice",
+    horizon: int = 20,
+) -> pd.Series:
+    """建構前瞻 horizon 天的報酬率作為預測目標。
+
+    報酬率 = (Close_{t+horizon} - Close_t) / Close_t，
+    末尾 horizon 筆為 NaN。
+
+    Args:
+        df: 包含價格欄位的 DataFrame。
+        target_column: 目標欄位名稱，預設為 ClosingPrice。
+        horizon: 前瞻天數，預設 20。
+
+    Returns:
+        前瞻 horizon 天報酬率 Series，末尾 horizon 筆為 NaN。
+
+    Raises:
+        KeyError: 當 DataFrame 缺少目標欄位時。
+    """
+    if target_column not in df.columns:
+        raise KeyError(f"DataFrame 缺少目標欄位：{target_column}")
+    close = df[target_column]
+    return (close.shift(-horizon) - close) / close
+
+
+def build_feature_target_with_indicators_forward(
+    df: pd.DataFrame,
+    feature_columns: list[str] | None = None,
+    target_column: str = "ClosingPrice",
+    date_column: str = "Date",
+    horizon: int = 20,
+) -> tuple[pd.DataFrame, pd.Series, pd.Series]:
+    """以技術指標為特徵，建構前瞻 horizon 天報酬率目標。
+
+    流程：compute_all_indicators → 選取特徵 → create_target_return_forward
+    → 移除 NaN 行。
+
+    Args:
+        df: 每日行情 DataFrame。
+        feature_columns: 特徵欄位名稱清單，None 時自動使用所有技術指標欄位
+            （排除 Date、SecurityCode 等非數值欄位）。
+        target_column: 目標欄位名稱，預設為 ClosingPrice。
+        date_column: 日期欄位名稱，預設為 Date。
+        horizon: 前瞻天數，預設 20。
+
+    Returns:
+        (features, target, dates) 三元組：
+        - features: 技術指標特徵 DataFrame（已移除 NaN 行）。
+        - target: 前瞻 horizon 天報酬率 Series（已移除 NaN 行）。
+        - dates: 日期 Series（已移除 NaN 行）。
+
+    Raises:
+        KeyError: 當 DataFrame 缺少必要欄位時。
+    """
+    # 計算技術指標（移除暖身期 NaN）
+    df_ind = compute_all_indicators(df, drop_warmup_rows=True)
+
+    # 建構前瞻報酬率目標
+    target = create_target_return_forward(df_ind, target_column, horizon)
+
+    # 選取特徵欄位
+    if feature_columns is None:
+        feature_columns = [
+            c for c in df_ind.columns if c not in _EXCLUDE_COLUMNS
+        ]
+    features = df_ind[feature_columns].copy()
+
+    # 移除 NaN 行（末尾 horizon 筆 target 為 NaN）
+    valid_mask = target.notna()
+    features = features.loc[valid_mask].reset_index(drop=True)
+    target = target.loc[valid_mask].reset_index(drop=True)
+
+    if date_column in df_ind.columns:
+        dates = df_ind.loc[valid_mask, date_column].reset_index(drop=True)
+    else:
+        dates = pd.Series(range(valid_mask.sum()), name="index")
+
+    logger.info(
+        "前瞻指標特徵工程完成：%d 筆資料，%d 個特徵，horizon=%d",
+        len(features),
+        len(features.columns),
+        horizon,
+    )
+    return features, target, dates
+
+
 def build_feature_target_with_indicators(
     df: pd.DataFrame,
     feature_columns: list[str] | None = None,

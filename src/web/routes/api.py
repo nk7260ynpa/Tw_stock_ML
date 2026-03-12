@@ -19,12 +19,15 @@ from src.database.stock_repository import (
 from src.model.xgboost_model import (
     detect_device,
     evaluate_return_model,
-    get_small_data_params,
+    get_high_dim_params,
     predict,
     save_model,
     train_xgboost,
 )
-from src.preprocessing.pipeline import preprocess_indicator_pipeline
+from src.preprocessing.pipeline import (
+    ForwardIndicatorData,
+    preprocess_forward_pipeline,
+)
 from src.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -189,19 +192,21 @@ def run_predict():
         if df.empty:
             return jsonify({"error": f"查無 {stock_code} 的股價資料"}), 404
 
-        if len(df) < 50:
+        if len(df) < 200:
             return jsonify({
-                "error": f"{stock_code} 資料不足（{len(df)} 筆），至少需要 50 筆",
+                "error": f"{stock_code} 資料不足（{len(df)} 筆），至少需要 200 筆",
             }), 400
 
-        # 前處理
-        pipeline_data = preprocess_indicator_pipeline(
-            df, target_type="return",
+        # 前處理（前瞻指標滑動視窗管線）
+        window_size = 60
+        horizon = 20
+        pipeline_data = preprocess_forward_pipeline(
+            df, window_size=window_size, horizon=horizon,
         )
 
-        # 訓練模型
+        # 訓練模型（高維特徵參數）
         device = detect_device()
-        params = get_small_data_params(device)
+        params = get_high_dim_params(device)
         model = train_xgboost(
             pipeline_data.X_train,
             pipeline_data.y_train,
@@ -219,30 +224,37 @@ def run_predict():
             model,
             pipeline_data.X_test,
             pipeline_data.y_test,
-            pipeline_data.base_prices.values,
+            pipeline_data.base_prices_test.values,
         )
 
-        # 預測值
+        # 預測值與逆推價格
         y_pred_return = predict(model, pipeline_data.X_test)
-        base_prices = pipeline_data.base_prices.values
+        base_prices = pipeline_data.base_prices_test.values
         actual_prices = base_prices * (1 + pipeline_data.y_test)
         predicted_prices = base_prices * (1 + y_pred_return)
 
-        # 組裝預測結果
+        # 組裝預測結果（使用 target_date 與 predict_date）
         test_dates = pipeline_data.test_dates
+        target_dates = pipeline_data.target_dates_test
         predictions = []
         for i in range(len(test_dates)):
             date_val = test_dates.iloc[i]
             if isinstance(date_val, (datetime, date)):
-                date_str = date_val.strftime("%Y-%m-%d")
+                predict_date_str = date_val.strftime("%Y-%m-%d")
             else:
-                date_str = str(date_val)
+                predict_date_str = str(date_val)
 
             predictions.append({
-                "date": date_str,
+                "predict_date": predict_date_str,
+                "target_date": target_dates[i],
                 "actual": round(float(actual_prices[i]), 2),
                 "predicted": round(float(predicted_prices[i]), 2),
             })
+
+        # 未來預測：使用最近 window_size 天資料預測未來第 horizon 天
+        future_prediction = _build_future_prediction(
+            pipeline_data, model, df, window_size, horizon,
+        )
 
         # 特徵重要度
         feature_importance = _get_feature_importance(
@@ -266,9 +278,12 @@ def run_predict():
             "train_samples": int(pipeline_data.X_train.shape[0]),
             "test_samples": int(pipeline_data.X_test.shape[0]),
             "n_features": int(pipeline_data.X_train.shape[1]),
+            "window_size": window_size,
+            "horizon": horizon,
             "predictions": predictions,
             "metrics": metrics,
             "feature_importance": feature_importance,
+            "future_prediction": future_prediction,
         }
 
         logger.info("ML 預測完成：%s", stock_code)
@@ -277,6 +292,95 @@ def run_predict():
     except Exception:
         logger.exception("ML 預測失敗：%s", stock_code)
         return jsonify({"error": f"ML 預測失敗：{stock_code}"}), 500
+
+
+def _build_future_prediction(
+    pipeline_data: ForwardIndicatorData,
+    model,
+    df: pd.DataFrame,
+    window_size: int,
+    horizon: int,
+) -> dict | None:
+    """建立未來預測結果。
+
+    使用最近 window_size 天的標準化特徵預測未來第 horizon 天的報酬率，
+    再逆推為預測價格。
+
+    Args:
+        pipeline_data: 前處理結果。
+        model: 訓練完成的 XGBoost 模型。
+        df: 原始每日行情 DataFrame。
+        window_size: 滑動視窗大小。
+        horizon: 前瞻天數。
+
+    Returns:
+        含 predict_date、target_date、predicted_price 的字典，失敗回傳 None。
+    """
+    try:
+        from src.preprocessing.feature_engineer import (
+            build_feature_target_with_indicators_forward,
+        )
+
+        # 取得包含技術指標的完整特徵（不濾除末尾 NaN target）
+        from src.preprocessing.technical_indicators import compute_all_indicators
+        df_ind = compute_all_indicators(df, drop_warmup_rows=True)
+
+        exclude = {"Date", "SecurityCode"}
+        feature_cols = [c for c in df_ind.columns if c not in exclude]
+        features_full = df_ind[feature_cols]
+
+        if len(features_full) < window_size:
+            return None
+
+        # 取最後 window_size 天的特徵
+        last_window = features_full.iloc[-window_size:].values.flatten().reshape(1, -1)
+
+        # 基準價格：最後一天的 ClosingPrice
+        base_price = float(df_ind["ClosingPrice"].iloc[-1])
+
+        # 標準化
+        last_window_scaled = pipeline_data.feature_scaler.transform(last_window)
+
+        # 預測報酬率
+        predicted_return = float(predict(model, last_window_scaled)[0])
+
+        # 逆推價格
+        predicted_price = round(base_price * (1 + predicted_return), 2)
+
+        # 預測日期（最後一天）
+        last_date = df_ind["Date"].iloc[-1]
+        if isinstance(last_date, (datetime, date)):
+            predict_date_str = last_date.strftime("%Y-%m-%d")
+        else:
+            predict_date_str = str(last_date)
+
+        # 目標日期：從原始 df 推算 + horizon 個交易日
+        all_dates_sorted = sorted(df["Date"].unique())
+        last_date_ts = pd.Timestamp(last_date)
+        matching = [
+            i for i, d in enumerate(all_dates_sorted)
+            if pd.Timestamp(d) == last_date_ts
+        ]
+        if matching and matching[0] + horizon < len(all_dates_sorted):
+            target_date = pd.Timestamp(
+                all_dates_sorted[matching[0] + horizon],
+            ).strftime("%Y-%m-%d")
+        else:
+            # 若超出已知資料，估算加 28 個自然日
+            from datetime import timedelta
+            estimated = last_date_ts + timedelta(days=28)
+            target_date = estimated.strftime("%Y-%m-%d")
+
+        return {
+            "predict_date": predict_date_str,
+            "target_date": target_date,
+            "predicted_price": predicted_price,
+            "predicted_return": round(predicted_return, 6),
+            "base_price": round(base_price, 2),
+        }
+    except Exception:
+        logger.exception("未來預測建立失敗")
+        return None
 
 
 def _safe_float(value) -> float | None:

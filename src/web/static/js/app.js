@@ -178,7 +178,7 @@
         if (!state.selectedCode) return;
 
         setStatus(els.predictStatus, 'info',
-            '<span class="spinner"></span>模型訓練中，請稍候...');
+            '<span class="spinner"></span>模型訓練中（60日視窗 → 預測20天後），請稍候...');
         els.btnPredict.classList.add('btn-calculating');
 
         fetch('/api/predict', {
@@ -198,7 +198,9 @@
                 setStatus(els.predictStatus, 'success',
                     '預測完成 - 訓練 ' + result.train_samples +
                     ' 筆，測試 ' + result.test_samples +
-                    ' 筆，' + result.n_features + ' 個特徵');
+                    ' 筆，' + result.n_features + ' 個特徵' +
+                    '（視窗 ' + (result.window_size || 60) +
+                    ' 日，預測 ' + (result.horizon || 20) + ' 天後）');
 
                 renderPredictionResults(result);
             })
@@ -219,11 +221,13 @@
         // 渲染指標卡片
         renderMetricsCards(result.metrics);
 
-        // 渲染預測圖表
+        // 渲染預測圖表（傳入未來預測資料）
         window.StockChart.destroyPrediction();
         var predContainer = document.getElementById('prediction-chart');
         if (predContainer) {
-            window.StockChart.renderPrediction(predContainer, result.predictions);
+            window.StockChart.renderPrediction(
+                predContainer, result.predictions, result.future_prediction,
+            );
         }
 
         // 渲染特徵重要度

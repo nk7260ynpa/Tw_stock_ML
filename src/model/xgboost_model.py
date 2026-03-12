@@ -170,6 +170,32 @@ def save_model(
     return path
 
 
+def get_high_dim_params(device: str) -> dict:
+    """取得高維特徵專用 XGBoost 參數。
+
+    針對滑動視窗展平後特徵維度極高的情境，使用較低的 colsample_bytree
+    與較強的正則化，搭配較深樹與較多迭代次數。
+
+    Args:
+        device: 裝置字串，"cuda" 或 "cpu"。
+
+    Returns:
+        XGBoost 參數字典。
+    """
+    return {
+        "n_estimators": 500,
+        "max_depth": 4,
+        "learning_rate": 0.01,
+        "subsample": 0.8,
+        "colsample_bytree": 0.3,
+        "reg_alpha": 0.5,
+        "reg_lambda": 2.0,
+        "min_child_weight": 5,
+        "early_stopping_rounds": 50,
+        "device": device,
+    }
+
+
 def get_small_data_params(device: str) -> dict:
     """取得小資料量專用 XGBoost 參數。
 

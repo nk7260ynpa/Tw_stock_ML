@@ -204,15 +204,16 @@ class TestPredictAPI:
     def test_predict_insufficient_data_returns_400(
         self, mock_get_prices, mock_engine, client,
     ):
-        """資料不足時應回傳 400。"""
+        """資料不足（< 200 筆）時應回傳 400。"""
         mock_engine.return_value = MagicMock()
+        # 只有 100 筆，不足 200 筆門檻
         mock_get_prices.return_value = pd.DataFrame({
-            "Date": ["2024-01-02"],
-            "OpeningPrice": [100.0],
-            "HighestPrice": [105.0],
-            "LowestPrice": [99.0],
-            "ClosingPrice": [103.0],
-            "TradeVolume": [50000.0],
+            "Date": pd.date_range("2024-01-02", periods=100, freq="B"),
+            "OpeningPrice": [100.0] * 100,
+            "HighestPrice": [105.0] * 100,
+            "LowestPrice": [99.0] * 100,
+            "ClosingPrice": [103.0] * 100,
+            "TradeVolume": [50000.0] * 100,
         })
 
         response = client.post(

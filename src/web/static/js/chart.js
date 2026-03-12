@@ -57,9 +57,10 @@
      * 渲染預測 vs 實際的比較圖。
      *
      * @param {HTMLElement} container - 圖表容器
-     * @param {Array} predictions - 預測結果陣列 [{date, actual, predicted}]
+     * @param {Array} predictions - 預測結果陣列 [{predict_date, target_date, actual, predicted}]
+     * @param {Object|null} futurePrediction - 未來預測 {target_date, predicted_price}
      */
-    function renderPredictionChart(container, predictions) {
+    function renderPredictionChart(container, predictions, futurePrediction) {
         if (!predictions || predictions.length === 0) return;
 
         var chart = createChart(container, {
@@ -80,11 +81,11 @@
         });
 
         var actualData = predictions.map(function (p) {
-            return { time: p.date, value: p.actual };
+            return { time: p.target_date, value: p.actual };
         });
         actualSeries.setData(actualData);
 
-        // 預測值（黃線）
+        // 預測值（黃線虛線）
         var predictedSeries = chart.addLineSeries({
             color: '#f0b90b',
             lineWidth: 2,
@@ -95,8 +96,17 @@
         });
 
         var predictedData = predictions.map(function (p) {
-            return { time: p.date, value: p.predicted };
+            return { time: p.target_date, value: p.predicted };
         });
+
+        // 若有未來預測，在預測線末尾加入
+        if (futurePrediction && futurePrediction.target_date && futurePrediction.predicted_price) {
+            predictedData.push({
+                time: futurePrediction.target_date,
+                value: futurePrediction.predicted_price,
+            });
+        }
+
         predictedSeries.setData(predictedData);
 
         chart.timeScale().fitContent();
