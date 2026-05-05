@@ -3,17 +3,20 @@
 測試 Flask app 工廠、頁面路由與 API 端點。
 """
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-from src.web import create_app
+from src.web import ScriptNameMiddleware, create_app
 
 
 @pytest.fixture
 def app():
     """建立測試用 Flask app。"""
+    # 確保預設狀態不受環境變數污染
+    os.environ.pop("SCRIPT_NAME", None)
     app = create_app()
     app.config["TESTING"] = True
     return app
@@ -221,6 +224,86 @@ class TestPredictAPI:
             json={"stock_code": "2330"},
         )
         assert response.status_code == 400
+
+
+class TestScriptNameMiddleware:
+    """SCRIPT_NAME WSGI 中介層測試。"""
+
+    def test_default_script_name_is_empty(self, client):
+        """未設定 SCRIPT_NAME 時 url_for 應回傳根路徑。"""
+        response = client.get("/")
+        html = response.data.decode("utf-8")
+        # 直接存取時 BASE_URL 指派會回傳空字串（經 replace 移除結尾斜線）
+        assert 'window.BASE_URL = "/"' in html or 'window.BASE_URL = ""' in html
+
+    def test_script_name_middleware_prefixes_urls(self):
+        """設定 SCRIPT_NAME 後 url_for 應產生帶前綴的 URL。"""
+        os.environ["SCRIPT_NAME"] = "/app/ml"
+        try:
+            app = create_app()
+            app.config["TESTING"] = True
+            client = app.test_client()
+
+            response = client.get("/")
+            assert response.status_code == 200
+
+            html = response.data.decode("utf-8")
+            # static 路徑應帶 /app/ml 前綴
+            assert "/app/ml/static/css/main.css" in html
+            assert "/app/ml/static/js/app.js" in html
+            assert "/app/ml/static/js/chart.js" in html
+            # BASE_URL 應為 /app/ml
+            assert 'window.BASE_URL = "/app/ml/"' in html
+        finally:
+            os.environ.pop("SCRIPT_NAME", None)
+
+    def test_script_name_middleware_strips_trailing_slash(self):
+        """SCRIPT_NAME 結尾斜線應被自動移除以避免雙斜線。"""
+        os.environ["SCRIPT_NAME"] = "/app/ml/"
+        try:
+            app = create_app()
+            app.config["TESTING"] = True
+            client = app.test_client()
+
+            response = client.get("/")
+            html = response.data.decode("utf-8")
+            # 不應出現 //static
+            assert "//static" not in html
+            assert "/app/ml/static/css/main.css" in html
+        finally:
+            os.environ.pop("SCRIPT_NAME", None)
+
+    def test_script_name_middleware_sets_wsgi_environ(self):
+        """ScriptNameMiddleware 應在 WSGI environ 寫入 SCRIPT_NAME。"""
+        captured = {}
+
+        def fake_app(environ, start_response):
+            captured["SCRIPT_NAME"] = environ.get("SCRIPT_NAME")
+            captured["PATH_INFO"] = environ.get("PATH_INFO")
+            start_response("200 OK", [])
+            return [b""]
+
+        middleware = ScriptNameMiddleware(fake_app, "/app/ml")
+        environ = {"PATH_INFO": "/api/stocks/search", "SCRIPT_NAME": ""}
+        middleware(environ, lambda status, headers: None)
+
+        assert captured["SCRIPT_NAME"] == "/app/ml"
+        # PATH_INFO 不應被修改（因 Dashboard 代理已 strip 前綴）
+        assert captured["PATH_INFO"] == "/api/stocks/search"
+
+    def test_api_still_accessible_via_strip_prefix(self):
+        """啟用 SCRIPT_NAME 後，Flask 仍應接受根路徑請求（代理已 strip）。"""
+        os.environ["SCRIPT_NAME"] = "/app/ml"
+        try:
+            app = create_app()
+            app.config["TESTING"] = True
+            client = app.test_client()
+
+            # 測試 API 仍能從根路徑存取（模擬代理已 strip 前綴的請求）
+            response = client.get("/api/stocks/search")
+            assert response.status_code == 200
+        finally:
+            os.environ.pop("SCRIPT_NAME", None)
 
 
 class TestHelperFunctions:

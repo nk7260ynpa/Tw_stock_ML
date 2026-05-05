@@ -7,6 +7,11 @@
 (function () {
     'use strict';
 
+    /* ---------- 應用程式根路徑 ---------- */
+    // 透過 Dashboard 反向代理存取時，BASE_URL 為 "/app/ml"，
+    // 直接存取時為空字串。所有 fetch 路徑都要加上此前綴。
+    var BASE_URL = (window.BASE_URL || '').replace(/\/$/, '');
+
     /* ---------- 狀態 ---------- */
     var state = {
         selectedCode: '',
@@ -65,7 +70,7 @@
         }
 
         state.searchTimer = setTimeout(function () {
-            fetch('/api/stocks/search?q=' + encodeURIComponent(keyword))
+            fetch(BASE_URL + '/api/stocks/search?q=' + encodeURIComponent(keyword))
                 .then(function (res) { return res.json(); })
                 .then(function (results) {
                     renderDropdown(results);
@@ -131,7 +136,7 @@
         setStatus(els.loadStatus, 'info', '載入中...');
         els.btnLoad.disabled = true;
 
-        var url = '/api/stocks/' + state.selectedCode + '/daily';
+        var url = BASE_URL + '/api/stocks/' + state.selectedCode + '/daily';
         var params = [];
         if (start) params.push('start=' + start);
         if (end) params.push('end=' + end);
@@ -181,7 +186,7 @@
             '<span class="spinner"></span>模型訓練中（60日視窗 → 預測20天後），請稍候...');
         els.btnPredict.classList.add('btn-calculating');
 
-        fetch('/api/predict', {
+        fetch(BASE_URL + '/api/predict', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ stock_code: state.selectedCode }),

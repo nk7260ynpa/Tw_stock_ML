@@ -5,8 +5,8 @@ services:
       dockerfile: docker/Dockerfile
     container_name: tw-stock-ml
     restart: always
-    ports:
-      - "5002:5002"
+    expose:
+      - "5002"
     volumes:
       - ../logs:/app/logs
       - ../src:/app/src
@@ -19,6 +19,8 @@ services:
       - DB_USER=root
       - DB_PASSWORD=stock
       - DB_NAME=TWSE
+      # 透過 Dashboard 反向代理存取的根路徑；留空則為直接存取模式
+      - SCRIPT_NAME=/app/ml
     command: python src/main.py --web
     networks:
       - db_network

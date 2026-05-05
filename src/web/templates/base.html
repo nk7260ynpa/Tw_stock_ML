@@ -6,6 +6,11 @@
     <title>{% block title %}台股 ML 預測儀表板{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <script src="https://unpkg.com/lightweight-charts@4/dist/lightweight-charts.standalone.production.js"></script>
+    <script>
+        // 由 Flask 傳入的應用程式根路徑，支援透過 Dashboard 反向代理存取。
+        // 當直接存取（無反向代理）時為空字串。
+        window.BASE_URL = "{{ url_for('dashboard.index') }}".replace(/\/$/, '');
+    </script>
 </head>
 <body>
     <nav class="navbar">
