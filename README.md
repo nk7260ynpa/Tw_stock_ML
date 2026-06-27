@@ -161,11 +161,26 @@ docker compose -f docker/docker-compose.yaml run --rm tw-stock-ml pytest tests/ 
 
 ## CI/CD
 
+### GitLab → GitHub 鏡像
+
+開發主線在自架 GitLab，GitHub 為對外鏡像。`.gitlab-ci.yml` 的 `mirror-to-github`
+job **僅在 `main` 打上 `vX.Y.Z` 版本 tag 時觸發**（合併進 `main` 當下不鏡像），
+並將 `main` 與該 tag 一併推送到 GitHub。流程：
+
+```text
+feature 分支 → 開 MR 合進 main（不鏡像）
+  → 於 main 打上 vX.Y.Z tag → 鏡像 job 觸發
+  → 將 main 與該 tag 一併推到 GitHub
+  → 接力觸發 GitHub Actions 發布 DockerHub image
+```
+
+### GitHub Actions（DockerHub 發版）
+
 本專案使用 GitHub Actions 自動建置並發布 Docker image 至 DockerHub。
 
 ### 觸發條件
 
-推送符合 `v*.*.*` 格式的 tag 時自動觸發：
+GitHub 收到符合 `v*.*.*` 格式的 tag 時自動觸發（該 tag 由上述 GitLab 鏡像推送而來）：
 
 ```bash
 git tag v0.2.0
