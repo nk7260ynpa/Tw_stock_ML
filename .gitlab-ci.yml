@@ -1,12 +1,25 @@
-# GitLab CI/CD：在 main 打上 vX.Y.Z 版本 tag 時，把儲存庫鏡像推送到 GitHub
-# （合併進 main 當下不鏡像）
+# GitLab CI/CD：在 main 打上 vX.Y.Z 版本 tag 時，於 GitLab Runner 上重新部署，
+# 並把儲存庫鏡像推送到 GitHub（合併進 main 當下兩者皆不觸發）。
 #
 # ── 流程 ───────────────────────────────────────────────────────────
-#   feature 分支 → 開 Merge Request → 合併進 main（此時不觸發鏡像）
-#   → 於 main 打上 vX.Y.Z 版本 tag → 本管線於該 tag 觸發
-#   → 將 main 與該 tag 一併推送（鏡像）到 GitHub。
+#   feature 分支 → 開 Merge Request → 合併進 main（此時不觸發管線）
+#   → 於 main 打上 vX.Y.Z 版本 tag → 本管線於該 tag 觸發：
+#       1. deploy：以該 tag 重建 image 並重啟容器（docker.sock 直連 host daemon）。
+#       2. mirror-to-github：將 main 與該 tag 一併推送（鏡像）到 GitHub。
 #
-# ── 認證來源 ───────────────────────────────────────────────────────
+# ── deploy 與 docker-compose 的差異（本 repo 特例，務必留意）─────────
+#   docker-compose.yaml 為「本機開發」用途：以 build: 即時建置、並掛載 src/tests
+#   做 editable 開發（pip install -e .）。CI deploy 則是「部署」用途，刻意：
+#     * 丟棄 src/tests 的 dev bind，改跑 image 內 pip install -e . 後已安裝的碼，
+#       確保部署結果與版本化 image 一致、不受工作目錄影響。
+#     * 將有狀態產物以「具名 volume」持久化，避免隨容器重建消失：
+#         - tw-stock-ml_model:/app/model（訓練完成的模型）
+#         - tw-stock-ml_data:/app/data（訓練資料）
+#         - tw-stock-ml_logs:/app/logs（日誌）
+#     * 不對外發佈 port（compose 用 expose:，本服務經 Tw_stock_dashboard 反向代理存取）。
+#   查看執行中服務的日誌：`docker logs tw-stock-ml`。
+#
+# ── 認證來源（mirror）──────────────────────────────────────────────
 #   GITHUB_SSH_KEY  由 GitLab Runner 注入（config.toml 的 environment 或掛載）。
 #                   其值可為 SSH 私鑰的「檔案路徑」或「私鑰內容」，本管線兩者皆支援。
 #                   對應公鑰需加到 GitHub repo → Settings → Deploy keys，並勾選
@@ -16,6 +29,7 @@
 #   GIT_DEPTH: 0 取得完整歷史，避免 shallow clone 導致 GitHub 推送被拒。
 
 stages:
+  - deploy
   - mirror
 
 workflow:
@@ -23,9 +37,60 @@ workflow:
     # 僅在 main 打上 vX.Y.Z 版本 tag 時建立管線（合併進 main 當下不觸發）
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
 
+# ── deploy：在 GitLab Runner（docker executor + 掛載 docker.sock）上，
+#    以打出的 tag 重建 image 並重啟服務容器。docker 指令直接作用於 host daemon。
+deploy:
+  stage: deploy
+  image: docker:27
+  needs: []
+  resource_group: deploy                              # 串行化部署，避免並行互踩
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+  variables:
+    IMAGE: "nk7260ynpa/tw-stock-ml"
+    CONTAINER: "tw-stock-ml"
+    LOGS_VOLUME: "tw-stock-ml_logs"
+    LOGS_PATH: "/app/logs"
+    MODEL_VOLUME: "tw-stock-ml_model"
+    MODEL_PATH: "/app/model"
+    DATA_VOLUME: "tw-stock-ml_data"
+    DATA_PATH: "/app/data"
+  before_script:
+    - export VERSION="${CI_COMMIT_TAG#v}"              # 去掉 v 前綴作為 image 版本號
+  script:
+    # 1) 先 build：以版本號與 latest 雙標籤建置（Dockerfile 內已 pip install -e .）。
+    #    build context 為 repo 根目錄，與 docker-compose 的 context: .. 一致。
+    - docker build -f docker/Dockerfile -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
+    # 2) 再 rm -f：移除舊容器（不存在也不報錯）。先 build 後 rm 可縮短停機時間，
+    #    並確保新 image 確實 build 成功才動既有容器。
+    - docker rm -f "$CONTAINER" || true
+    # 3) 最後 run：以 latest 啟動新容器。
+    #    - 不掛 src/tests（刻意丟棄 dev bind，跑 image 內已安裝的碼）。
+    #    - model/data/logs 以具名 volume 持久化有狀態產物。
+    #    - 不發佈 port（經 dashboard 反向代理，SCRIPT_NAME=/app/ml）。
+    #    - image CMD 已是 python src/main.py --web，不需另帶 command。
+    - docker run -d
+        --name "$CONTAINER"
+        --restart=always
+        --network db_network
+        --volume "$LOGS_VOLUME:$LOGS_PATH"
+        --volume "$MODEL_VOLUME:$MODEL_PATH"
+        --volume "$DATA_VOLUME:$DATA_PATH"
+        -e SCRIPT_NAME=/app/ml
+        -e PYTHONUNBUFFERED=1
+        -e DB_HOST=tw_stock_database
+        -e DB_USER=root
+        -e DB_PASSWORD=stock
+        -e DB_NAME=TWSE
+        "$IMAGE:latest"
+    # 4) 清理 dangling image，回收舊版佔用空間。
+    - docker image prune -f || true
+
+# ── mirror-to-github：把 main 與該 tag 鏡像推送到 GitHub，接力觸發 DockerHub 發版。
 mirror-to-github:
   stage: mirror
   image: alpine:3.20
+  needs: []
   variables:
     GIT_DEPTH: 0                                       # 完整歷史，確保可 fast-forward 推送
     GITHUB_REPO: "git@github.com:nk7260ynpa/Tw_stock_ML.git"
